@@ -18,10 +18,12 @@ interface ShowInterface {
 }
 
 interface ShowResultsInterface {
-  id: number,
-  name: string,
-  summary: string,
-  image: { medium: string; } | null;
+  show:
+   {id: number,
+    name: string,
+    summary: string,
+    image: { medium: string; } | null;
+  }
 };
 
 interface EpisodeInterface {
@@ -42,16 +44,16 @@ async function searchShowsByTerm(term: string): Promise<ShowInterface[]> {
 
   const response = await axios.get(`${BASE_URL}search/shows?q=${term}`);
   console.log("response", response);
-  //const data : ShowResultsInterface[] = response.data
-  const result = response.data.map(showDetails => ({
-    id: showDetails.show.id,
-    name: showDetails.show.name,
-    summary: showDetails.show.summary,
-    image: showDetails.show.image
-  }));
-  console.log("result", result);
-  return result;
-
+  const data: ShowResultsInterface[] = response.data;
+  return data.map(result => {
+    const show = result.show;
+    return {
+      id: show.id,
+      name: show.name,
+      summary: show.summary,
+      image: show.image?.medium || MISSING_IMAGE_URL
+    };
+  });
 }
 
 
@@ -65,7 +67,7 @@ function populateShows(shows: ShowInterface[]) {
       `<div data-show-id="${show.id}" class="Show col-md-12 col-lg-6 mb-4">
          <div class="media">
            <img
-              src= ${show.image?.medium || MISSING_IMAGE_URL}
+              src= ${show.image}
               alt= ${show.name}
               class="w-25 me-3">
            <div class="media-body">
@@ -89,7 +91,7 @@ function populateShows(shows: ShowInterface[]) {
  */
 
 async function searchForShowAndDisplay(): Promise<void> {
-  const term = $("#searchForm-term").val();
+  const term = $("#searchForm-term").val() as string;
   const shows = await searchShowsByTerm(term);
 
   $episodesArea.hide();
@@ -111,15 +113,14 @@ async function getEpisodesOfShow(id: number): Promise<EpisodeInterface[]> {
 
   const response = await axios.get(`${BASE_URL}shows/${id}/episodes`);
   console.log('***response', response);
-
-  const result = response.data.map(episode => ({
+  const data: EpisodeInterface[] = response.data;
+  return data.map(episode => ({
     id: episode.id,
     name: episode.name,
     season: episode.season,
-    number: episode.number,
+    number: episode.number
   }));
 
-  return result;
 }
 
 /** Get a show and populate a list with the episodes. */
@@ -138,7 +139,8 @@ function populateEpisodes(episodes: EpisodeInterface[]) {
 
 /** gets episodes and populates the dom with episode data*/
 
-async function getEpisodesAndShowDom(evt: JQuery.ClickEvent){
+//TODO: better name
+async function getEpisodesAndShowDom(evt: JQuery.ClickEvent) {
   const id = $(evt.target).closest('.Show').data('show-id');
   const episodes = await getEpisodesOfShow(id);
   populateEpisodes(episodes);
@@ -148,4 +150,4 @@ async function getEpisodesAndShowDom(evt: JQuery.ClickEvent){
  * displays episode to DOM
  */
 
- $showsList.on('click', 'button', getEpisodesAndShowDom);
+$showsList.on('click', 'button', getEpisodesAndShowDom);
